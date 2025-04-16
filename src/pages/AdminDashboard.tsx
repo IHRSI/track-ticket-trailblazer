@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Navbar from '@/components/layout/Navbar';
@@ -62,13 +61,17 @@ const AdminDashboard = () => {
     queryFn: getCancellations,
   });
   
-  // Force refresh on initial load
   useEffect(() => {
     handleRefreshData();
+    
+    const refreshInterval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['adminData'] });
+    }, 60000);
+    
+    return () => clearInterval(refreshInterval);
   }, []);
   
   const handleTrainAdded = () => {
-    // Refresh trains data after adding a new train
     queryClient.invalidateQueries({ queryKey: ['trains'] });
     queryClient.invalidateQueries({ queryKey: ['adminData'] });
     setActiveTab("trains");
@@ -88,7 +91,6 @@ const AdminDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['trains'] });
       toast.success("Train deleted successfully");
       
-      // Close dialog by simulating click on close button
       const closeButton = document.querySelector('[data-state="open"] button[aria-label="Close"]');
       if (closeButton) {
         closeButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -122,7 +124,6 @@ const AdminDashboard = () => {
     }
   };
   
-  // Process booking data for charts
   const processBookingData = () => {
     if (!bookings) return [];
     
@@ -145,7 +146,6 @@ const AdminDashboard = () => {
     }));
   };
   
-  // Get monthly revenue data
   const getMonthlyRevenueData = () => {
     if (!bookings || !adminData) return [];
     
@@ -153,21 +153,18 @@ const AdminDashboard = () => {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthlyData: Record<string, number> = {};
     
-    // Initialize last 6 months
     for (let i = 5; i >= 0; i--) {
       const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthKey = monthNames[month.getMonth()];
       monthlyData[monthKey] = 0;
     }
     
-    // Distribute the total revenue across months for visualization
     const totalRevenue = adminData.totalRevenue || 0;
     const perMonthBase = totalRevenue / 6;
     
-    // Create a pattern with some variation for better visualization
     let idx = 0;
     for (const monthKey in monthlyData) {
-      const variation = 0.7 + (Math.random() * 0.6); // Between 0.7 and 1.3
+      const variation = 0.7 + (Math.random() * 0.6);
       monthlyData[monthKey] = Math.round(perMonthBase * variation);
       idx++;
     }
@@ -178,11 +175,9 @@ const AdminDashboard = () => {
     }));
   };
   
-  // Get occupancy data by class
   const getOccupancyData = () => {
     if (!trains) return [];
     
-    // Calculate average occupancy for each class
     const totalTrains = trains.length;
     if (totalTrains === 0) return [];
     
@@ -191,7 +186,6 @@ const AdminDashboard = () => {
     
     const overallOccupancy = Math.round(((totalSeats - availableSeats) / totalSeats) * 100) || 0;
     
-    // Distribute occupancy across classes with slight variations for visualization
     return [
       { class: 'AC First Class', occupancy: Math.min(100, Math.max(0, overallOccupancy + Math.floor(Math.random() * 10 - 5))) },
       { class: 'AC 2 Tier', occupancy: Math.min(100, Math.max(0, overallOccupancy + Math.floor(Math.random() * 15))) },
@@ -200,7 +194,6 @@ const AdminDashboard = () => {
     ];
   };
   
-  // Colors for pie chart
   const COLORS = ['#7B4DFF', '#4BB543', '#FF9800', '#E91E63'];
 
   return (
@@ -251,7 +244,6 @@ const AdminDashboard = () => {
             </TabsTrigger>
           </TabsList>
           
-          {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="border-railway-200 shadow-md hover:shadow-lg transition-shadow duration-200">
@@ -297,7 +289,6 @@ const AdminDashboard = () => {
               </Card>
             </div>
             
-            {/* Revenue Card */}
             <Card className="border-railway-200 shadow-md">
               <CardHeader className="bg-gradient-to-r from-railway-50 to-white">
                 <CardTitle className="text-railway-800">Revenue Overview</CardTitle>
@@ -342,9 +333,7 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
             
-            {/* Booking Analytics */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Booking Distribution */}
               <Card className="border-railway-200 shadow-md">
                 <CardHeader className="bg-gradient-to-r from-railway-50 to-white">
                   <CardTitle className="text-railway-800">Booking Distribution by Class</CardTitle>
@@ -376,7 +365,6 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
               
-              {/* Occupancy Card */}
               <Card className="border-railway-200 shadow-md">
                 <CardHeader className="bg-gradient-to-r from-railway-50 to-white">
                   <CardTitle className="text-railway-800">Train Occupancy by Class</CardTitle>
@@ -398,7 +386,6 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
           
-          {/* Trains Tab */}
           <TabsContent value="trains" className="space-y-6">
             <Card className="border-railway-200 shadow-md">
               <CardHeader className="bg-gradient-to-r from-railway-50 to-white">
@@ -531,7 +518,6 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
           
-          {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-6">
             <Card className="border-railway-200 shadow-md">
               <CardHeader className="bg-gradient-to-r from-railway-50 to-white">
@@ -623,12 +609,10 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
           
-          {/* Add Train Tab */}
           <TabsContent value="add-train">
             <TrainForm onSubmit={handleTrainAdded} />
           </TabsContent>
           
-          {/* Edit Train Tab */}
           <TabsContent value="edit-train">
             {selectedTrain && (
               <>
