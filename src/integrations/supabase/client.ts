@@ -9,4 +9,16 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// Define the custom type for the supabase client to include both RPC functions
+type CustomSupabaseClient = ReturnType<typeof createClient<Database>> & {
+  rpc<T extends "increment" | "decrement">(
+    fn: T,
+    params: { row_id: string; value: number }
+  ): Promise<{ data: number | null; error: Error | null }>;
+};
+
+// Create the supabase client with the extended type
+export const supabase = createClient<Database>(
+  SUPABASE_URL, 
+  SUPABASE_PUBLISHABLE_KEY
+) as CustomSupabaseClient;

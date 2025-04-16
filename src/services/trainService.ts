@@ -1,18 +1,14 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { TrainData, FareData, mapTrainDataToTrain, Train, BookingData, PaymentData, CancellationData } from '@/types/railBooker';
 import { toast } from 'sonner';
 
-// Format time to ensure HH:MM format
 const formatTimeString = (timeStr: string): string => {
   if (!timeStr) return '';
   
-  // If already in HH:MM format, return as is
   if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) {
     return timeStr;
   }
   
-  // Try to extract hours and minutes
   const timeParts = timeStr.split(':');
   if (timeParts.length >= 2) {
     const hours = parseInt(timeParts[0]).toString().padStart(2, '0');
@@ -20,11 +16,9 @@ const formatTimeString = (timeStr: string): string => {
     return `${hours}:${minutes}`;
   }
   
-  // If format is invalid, return original
   return timeStr;
 };
 
-// Get all trains
 export const getTrains = async (params?: { 
   origin?: string, 
   destination?: string, 
@@ -35,7 +29,6 @@ export const getTrains = async (params?: {
     fares:fare(*)
   `);
   
-  // Apply filters if provided
   if (params?.origin) {
     query = query.ilike('source', `%${params.origin}%`);
   }
@@ -55,11 +48,9 @@ export const getTrains = async (params?: {
     throw new Error(`Failed to fetch trains: ${error.message}`);
   }
   
-  // Type assertion to tell TypeScript we know the shape of the data
   return (data as unknown as TrainData[]).map(train => mapTrainDataToTrain(train));
 };
 
-// Get a train by ID
 export const getTrain = async (trainId: string): Promise<Train | null> => {
   const { data, error } = await supabase
     .from('train')
@@ -77,11 +68,9 @@ export const getTrain = async (trainId: string): Promise<Train | null> => {
   
   if (!data) return null;
   
-  // Type assertion to tell TypeScript we know the shape of the data
   return mapTrainDataToTrain(data as unknown as TrainData);
 };
 
-// Get train fares
 export const getTrainFares = async (trainId: string): Promise<FareData[]> => {
   const { data, error } = await supabase
     .from('fare')
@@ -93,11 +82,9 @@ export const getTrainFares = async (trainId: string): Promise<FareData[]> => {
     throw new Error(`Failed to fetch fares: ${error.message}`);
   }
   
-  // Type assertion to tell TypeScript we know the shape of the data
   return data as unknown as FareData[];
 };
 
-// Create a booking
 export const createBooking = async (bookingData: {
   passengerData: {
     name: string;
@@ -111,7 +98,6 @@ export const createBooking = async (bookingData: {
   totalAmount: number;
 }): Promise<string> => {
   try {
-    // Check if train has enough seats
     const { data: trainData, error: trainError } = await supabase
       .from('train')
       .select('available_seats, total_seats')
@@ -125,7 +111,6 @@ export const createBooking = async (bookingData: {
       throw new Error(`Not enough seats available. Only ${trainData.available_seats} seats left.`);
     }
     
-    // Step 1: Insert passenger data and get IDs
     const passengerIds: string[] = [];
     
     for (const passenger of bookingData.passengerData) {
@@ -145,7 +130,6 @@ export const createBooking = async (bookingData: {
       passengerIds.push(passengerData.passenger_id);
     }
     
-    // Step 2: Get the fare_id for the selected class
     let fareId: string;
     
     try {
@@ -161,7 +145,6 @@ export const createBooking = async (bookingData: {
       fareId = fareData.fare_id;
     } catch (error) {
       console.error('Error fetching fare, trying fallback:', error);
-      // If no exact match, use any fare for this train
       const { data: anyFare, error: anyFareError } = await supabase
         .from('fare')
         .select('fare_id')
@@ -174,12 +157,10 @@ export const createBooking = async (bookingData: {
       fareId = anyFare.fare_id;
     }
     
-    // Step 3: Create bookings for each passenger
     const bookings: string[] = [];
     let firstPnr = '';
     
     for (let i = 0; i < passengerIds.length; i++) {
-      // Assign random seat numbers (in a real app, this would be more sophisticated)
       const seatNo = `${bookingData.fareClass[0]}${Math.floor(Math.random() * 90) + 10}`;
       
       const { data: bookingResult, error: bookingError } = await supabase
@@ -201,19 +182,17 @@ export const createBooking = async (bookingData: {
       if (i === 0) firstPnr = bookingResult.pnr;
     }
     
-    // Step 4: Create payment record
     const { error: paymentError } = await supabase
       .from('payment')
       .insert({
         pnr: firstPnr,
         amount: bookingData.totalAmount,
         payment_method: bookingData.paymentMethod,
-        status: 'Successful' // Trigger will update revenue and seats
+        status: 'Successful'
       });
     
     if (paymentError) throw paymentError;
     
-    // Use the database function to decrement seats
     const { error: seatUpdateError } = await supabase.rpc('decrement', {
       row_id: bookingData.trainId,
       value: bookingData.passengerData.length
@@ -221,7 +200,6 @@ export const createBooking = async (bookingData: {
     
     if (seatUpdateError) {
       console.error('Warning: Seat decrement function error:', seatUpdateError);
-      // Don't throw here, as the booking was successful and triggers should handle it
     }
     
     return firstPnr;
@@ -232,7 +210,6 @@ export const createBooking = async (bookingData: {
   }
 };
 
-// Get all bookings
 export const getBookings = async (): Promise<BookingData[]> => {
   const { data, error } = await supabase
     .from('booking')
@@ -251,7 +228,6 @@ export const getBookings = async (): Promise<BookingData[]> => {
   return data as unknown as BookingData[];
 };
 
-// Get all cancellations
 export const getCancellations = async (): Promise<CancellationData[]> => {
   const { data, error } = await supabase
     .from('cancellation')
@@ -266,10 +242,8 @@ export const getCancellations = async (): Promise<CancellationData[]> => {
   return data as unknown as CancellationData[];
 };
 
-// Cancel a booking
 export const cancelBooking = async (pnr: string, amount: number): Promise<void> => {
   try {
-    // Get booking info to determine train and passenger count
     const { data: bookingData, error: bookingFetchError } = await supabase
       .from('booking')
       .select('train_id, booking_status')
@@ -279,9 +253,7 @@ export const cancelBooking = async (pnr: string, amount: number): Promise<void> 
     if (bookingFetchError) throw bookingFetchError;
     if (!bookingData) throw new Error('Booking not found');
     
-    // Only proceed if the booking is currently confirmed
     if (bookingData.booking_status === 'Confirmed') {
-      // Step 1: Update booking status
       const { error: bookingError } = await supabase
         .from('booking')
         .update({ booking_status: 'Cancelled' })
@@ -289,8 +261,7 @@ export const cancelBooking = async (pnr: string, amount: number): Promise<void> 
       
       if (bookingError) throw bookingError;
       
-      // Step 2: Create cancellation record
-      const refundAmount = amount * 0.9; // 10% cancellation fee
+      const refundAmount = amount * 0.9;
       
       const { error: cancellationError } = await supabase
         .from('cancellation')
@@ -302,16 +273,13 @@ export const cancelBooking = async (pnr: string, amount: number): Promise<void> 
       
       if (cancellationError) throw cancellationError;
       
-      // Step 3: Increment available seats - FIX for the TypeScript error
-      // The RPC function name in Supabase is 'increment', so we need to use that exact name here
       const { error: seatUpdateError } = await supabase.rpc('increment', {
         row_id: bookingData.train_id,
-        value: 1 // Assuming one passenger per booking for simplicity
+        value: 1
       });
       
       if (seatUpdateError) {
         console.error('Warning: Seat increment function error:', seatUpdateError);
-        // Don't throw here, as the cancellation was successful and triggers should handle it
       }
       
       toast.success('Booking cancelled successfully. Refund of ₹' + refundAmount.toFixed(2) + ' will be processed.');
@@ -325,7 +293,6 @@ export const cancelBooking = async (pnr: string, amount: number): Promise<void> 
   }
 };
 
-// Admin functions
 export const getAdminData = async (): Promise<{ totalRevenue: number }> => {
   try {
     const { data, error } = await supabase
@@ -335,17 +302,16 @@ export const getAdminData = async (): Promise<{ totalRevenue: number }> => {
     
     if (error) {
       console.error('Error fetching admin data:', error);
-      return { totalRevenue: 0 }; // Default value if error
+      return { totalRevenue: 0 };
     }
     
     return { totalRevenue: data?.total_revenue || 0 };
   } catch (error) {
     console.error('Error in getAdminData:', error);
-    return { totalRevenue: 0 }; // Default value if any error
+    return { totalRevenue: 0 };
   }
 };
 
-// Add a new train (admin only)
 export const addTrain = async (trainData: {
   name: string;
   number: string;
@@ -358,7 +324,6 @@ export const addTrain = async (trainData: {
   availableSeats: string;
 }): Promise<void> => {
   try {
-    // Format time strings to ensure HH:MM format
     const formattedDepartureTime = formatTimeString(trainData.departureTime);
     const formattedArrivalTime = formatTimeString(trainData.arrivalTime);
     
@@ -368,7 +333,6 @@ export const addTrain = async (trainData: {
       arrivalTime: formattedArrivalTime
     });
     
-    // Step 1: Insert train data
     const { data: newTrain, error: trainError } = await supabase
       .from('train')
       .insert({
@@ -392,7 +356,6 @@ export const addTrain = async (trainData: {
     
     console.log('Train added successfully:', newTrain);
     
-    // Step 2: Insert fare data
     const fareAmount = Number(trainData.price);
     const fareClasses = [
       { class: 'AC First Class', multiplier: 1.0 },
@@ -424,7 +387,6 @@ export const addTrain = async (trainData: {
   }
 };
 
-// Update an existing train (admin only)
 export const updateTrain = async (trainData: {
   id: string;
   name: string;
@@ -438,7 +400,6 @@ export const updateTrain = async (trainData: {
   availableSeats: string;
 }): Promise<void> => {
   try {
-    // Format time strings to ensure HH:MM format
     const formattedDepartureTime = formatTimeString(trainData.departureTime);
     const formattedArrivalTime = formatTimeString(trainData.arrivalTime);
     
@@ -448,7 +409,6 @@ export const updateTrain = async (trainData: {
       arrivalTime: formattedArrivalTime
     });
     
-    // Step 1: Update train data
     const { error: trainError } = await supabase
       .from('train')
       .update({
@@ -469,10 +429,8 @@ export const updateTrain = async (trainData: {
       throw trainError;
     }
     
-    // Step 2: Update fare data
     const fareAmount = Number(trainData.price);
     
-    // Get existing fares
     const { data: existingFares, error: faresFetchError } = await supabase
       .from('fare')
       .select('fare_id, class')
@@ -483,7 +441,6 @@ export const updateTrain = async (trainData: {
       throw faresFetchError;
     }
     
-    // Update each fare with correct multiplier
     const fareClasses: Record<string, number> = {
       'AC First Class': 1.0,
       'AC 2 Tier': 0.8,
@@ -503,7 +460,6 @@ export const updateTrain = async (trainData: {
       
       if (fareUpdateError) {
         console.error(`Error updating fare for ${fare.class}:`, fareUpdateError);
-        // Continue with other fares even if one fails
       }
     }
     
@@ -515,10 +471,8 @@ export const updateTrain = async (trainData: {
   }
 };
 
-// Delete a train (admin only)
 export const deleteTrain = async (trainId: string): Promise<void> => {
   try {
-    // Check if train has associated bookings
     const { count, error: countError } = await supabase
       .from('booking')
       .select('*', { count: 'exact', head: true })
@@ -530,7 +484,6 @@ export const deleteTrain = async (trainId: string): Promise<void> => {
       throw new Error(`Cannot delete train with ${count} existing bookings`);
     }
     
-    // Delete all associated fares first
     const { error: fareDeleteError } = await supabase
       .from('fare')
       .delete()
@@ -538,7 +491,6 @@ export const deleteTrain = async (trainId: string): Promise<void> => {
     
     if (fareDeleteError) throw fareDeleteError;
     
-    // Delete the train
     const { error: trainDeleteError } = await supabase
       .from('train')
       .delete()
