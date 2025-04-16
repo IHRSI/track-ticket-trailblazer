@@ -47,18 +47,32 @@ const TrainForm: React.FC<TrainFormProps> = ({ onSubmit, initialData }) => {
 
   // Helper function to format time to ensure HH:MM format
   const formatTimeValue = (value: string): string => {
-    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (timeRegex.test(value)) return value;
+    // If already in HH:MM format, return as is
+    if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value)) {
+      const [hours, minutes] = value.split(':').map(Number);
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    }
     
     // Try to extract hours and minutes
     const timeParts = value.split(':');
     if (timeParts.length >= 2) {
-      const hours = parseInt(timeParts[0]).toString().padStart(2, '0');
-      const minutes = parseInt(timeParts[1]).toString().padStart(2, '0');
-      return `${hours}:${minutes}`;
+      const hours = parseInt(timeParts[0]);
+      const minutes = parseInt(timeParts[1]);
+      
+      if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        return value; // Return original if invalid
+      }
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     }
     
-    return value;
+    // If it's just a number, assume it's hours
+    const hoursOnly = parseInt(value);
+    if (!isNaN(hoursOnly) && hoursOnly >= 0 && hoursOnly < 24) {
+      return `${hoursOnly.toString().padStart(2, '0')}:00`;
+    }
+    
+    return value; // Return original if cannot format
   };
 
   const validateForm = () => {
@@ -78,14 +92,14 @@ const TrainForm: React.FC<TrainFormProps> = ({ onSubmit, initialData }) => {
     // Validate time format (HH:MM)
     const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
     
-    // Format departure time if not in correct format
+    // Format and validate departure time
     const formattedDepartureTime = formatTimeValue(trainData.departureTime);
     if (!timeRegex.test(formattedDepartureTime)) {
       toast.error("Departure time should be in HH:MM format (e.g. 08:30)");
       return false;
     }
     
-    // Format arrival time if not in correct format
+    // Format and validate arrival time
     const formattedArrivalTime = formatTimeValue(trainData.arrivalTime);
     if (!timeRegex.test(formattedArrivalTime)) {
       toast.error("Arrival time should be in HH:MM format (e.g. 14:30)");
@@ -117,27 +131,30 @@ const TrainForm: React.FC<TrainFormProps> = ({ onSubmit, initialData }) => {
     
     if (!validateForm()) return;
     
+    // Format times again to ensure they're in the correct format
+    const formattedData = {
+      ...trainData,
+      departureTime: formatTimeValue(trainData.departureTime),
+      arrivalTime: formatTimeValue(trainData.arrivalTime)
+    };
+    
     setIsLoading(true);
     try {
       if (initialData?.id) {
         // Update existing train
         await updateTrain({
-          ...trainData,
-          departureTime: formatTimeValue(trainData.departureTime),
-          arrivalTime: formatTimeValue(trainData.arrivalTime),
+          ...formattedData,
           id: initialData.id
         });
+        toast.success("Train updated successfully");
       } else {
         // Add new train
-        await addTrain({
-          ...trainData,
-          departureTime: formatTimeValue(trainData.departureTime),
-          arrivalTime: formatTimeValue(trainData.arrivalTime)
-        });
+        await addTrain(formattedData);
+        toast.success("Train added successfully");
       }
       
       // Call the onSubmit function passed as prop
-      onSubmit(trainData);
+      onSubmit(formattedData);
       
       // Clear the form if it's a new train submission
       if (!initialData) {

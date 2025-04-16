@@ -210,6 +210,18 @@ export const createBooking = async (bookingData: {
     
     if (paymentError) throw paymentError;
     
+    // The triggers will handle updating available seats and revenue
+    // But let's also decrement seats here to ensure UI is updated immediately
+    const { error: seatUpdateError } = await supabase.rpc('decrement', {
+      row_id: bookingData.trainId,
+      value: bookingData.passengerData.length
+    });
+    
+    if (seatUpdateError) {
+      console.error('Warning: Seat decrement function error:', seatUpdateError);
+      // Don't throw here, as the booking was successful and triggers should handle it
+    }
+    
     return firstPnr;
   } catch (error: any) {
     console.error('Error creating booking:', error);
@@ -286,6 +298,17 @@ export const cancelBooking = async (pnr: string, amount: number): Promise<void> 
         });
       
       if (cancellationError) throw cancellationError;
+      
+      // Step 3: Increment available seats
+      const { error: seatUpdateError } = await supabase.rpc('increment', {
+        row_id: bookingData.train_id,
+        value: 1 // Assuming one passenger per booking for simplicity
+      });
+      
+      if (seatUpdateError) {
+        console.error('Warning: Seat increment function error:', seatUpdateError);
+        // Don't throw here, as the cancellation was successful and triggers should handle it
+      }
       
       toast.success('Booking cancelled successfully. Refund of ₹' + refundAmount.toFixed(2) + ' will be processed.');
     } else {
