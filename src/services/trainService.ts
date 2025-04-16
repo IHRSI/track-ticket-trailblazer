@@ -153,9 +153,10 @@ export const createBooking = async (bookingData: {
         .select('fare_id')
         .eq('train_id', bookingData.trainId)
         .eq('class', bookingData.fareClass)
-        .single();
+        .maybeSingle();
         
       if (fareError) throw fareError;
+      if (!fareData) throw new Error('No fare found for this class');
       fareId = fareData.fare_id;
     } catch (error) {
       console.error('Error fetching fare, trying fallback:', error);
@@ -165,7 +166,7 @@ export const createBooking = async (bookingData: {
         .select('fare_id')
         .eq('train_id', bookingData.trainId)
         .limit(1)
-        .single();
+        .maybeSingle();
         
       if (anyFareError) throw anyFareError;
       if (!anyFare) throw new Error('No fare found for this train');
@@ -273,9 +274,10 @@ export const cancelBooking = async (pnr: string, amount: number): Promise<void> 
       .from('booking')
       .select('train_id, booking_status')
       .eq('pnr', pnr)
-      .single();
+      .maybeSingle();
     
     if (bookingFetchError) throw bookingFetchError;
+    if (!bookingData) throw new Error('Booking not found');
     
     // Only proceed if the booking is currently confirmed
     if (bookingData.booking_status === 'Confirmed') {

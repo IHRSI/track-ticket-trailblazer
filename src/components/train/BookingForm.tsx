@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -103,7 +102,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
         totalAmount: calculateTotalAmount()
       });
       
-      toast.success("Booking successful! Your tickets have been reserved.");
+      toast.success("Train successfully booked! Your tickets have been reserved.");
       navigate('/bookings');
     } catch (error) {
       console.error("Booking error:", error);
