@@ -302,7 +302,8 @@ export const cancelBooking = async (pnr: string, amount: number): Promise<void> 
       
       if (cancellationError) throw cancellationError;
       
-      // Step 3: Increment available seats
+      // Step 3: Increment available seats - FIX for the TypeScript error
+      // The RPC function name in Supabase is 'increment', so we need to use that exact name here
       const { error: seatUpdateError } = await supabase.rpc('increment', {
         row_id: bookingData.train_id,
         value: 1 // Assuming one passenger per booking for simplicity
