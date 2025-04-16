@@ -116,9 +116,10 @@ export const createBooking = async (bookingData: {
       .from('train')
       .select('available_seats, total_seats')
       .eq('train_id', bookingData.trainId)
-      .single();
+      .maybeSingle();
     
     if (trainError) throw trainError;
+    if (!trainData) throw new Error('Train not found');
     
     if (trainData.available_seats < bookingData.passengerData.length) {
       throw new Error(`Not enough seats available. Only ${trainData.available_seats} seats left.`);
@@ -207,13 +208,12 @@ export const createBooking = async (bookingData: {
         pnr: firstPnr,
         amount: bookingData.totalAmount,
         payment_method: bookingData.paymentMethod,
-        status: 'Successful' // Assume payment is successful immediately for simplicity
+        status: 'Successful' // Trigger will update revenue and seats
       });
     
     if (paymentError) throw paymentError;
     
-    // The triggers will handle updating available seats and revenue
-    // But let's also decrement seats here to ensure UI is updated immediately
+    // Use the database function to decrement seats
     const { error: seatUpdateError } = await supabase.rpc('decrement', {
       row_id: bookingData.trainId,
       value: bookingData.passengerData.length
