@@ -36,7 +36,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
   };
 
   const validateForm = () => {
-    // Check if all passenger details are filled
     const validPassengers = passengerDetails.every(p => 
       p.name && p.age && parseInt(p.age.toString()) > 0 && p.gender
     );
@@ -46,20 +45,17 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
       return false;
     }
     
-    // Check contact information
     if (!contactEmail || !contactPhone) {
       toast.error("Please provide contact information");
       return false;
     }
     
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(contactEmail)) {
       toast.error("Please enter a valid email address");
       return false;
     }
     
-    // Validate phone format (simple check for now)
     if (contactPhone.length < 10) {
       toast.error("Please enter a valid phone number");
       return false;
@@ -73,7 +69,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
     
     if (!validateForm()) return;
     
-    // Check if there are enough seats
     if (train.availableSeats < passengers) {
       toast.error(`Not enough seats available. Only ${train.availableSeats} seats left.`);
       return;
@@ -82,7 +77,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
     setIsLoading(true);
     
     try {
-      // Format passenger data
       const formattedPassengers = passengerDetails.map(p => ({
         name: p.name,
         age: parseInt(p.age.toString()),
@@ -90,10 +84,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
         contact: contactPhone
       }));
       
-      // Set standard fare class (removed the selection)
       const fareClass = 'AC First Class';
       
-      // Create the booking
       const pnr = await createBooking({
         passengerData: formattedPassengers,
         trainId: train.id,
@@ -104,21 +96,20 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
       
       toast.success("Train successfully booked! Your tickets have been reserved.");
       navigate('/bookings');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Booking error:", error);
-      toast.error("There was an error processing your booking. Please try again.");
+      toast.error(`There was an error processing your booking: ${error.message || 'Please try again.'}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Calculate base fare (simplified - no class selection anymore)
   const calculateBaseFare = () => {
     return train.price;
   };
   
   const calculateTotalAmount = () => {
-    return (calculateBaseFare() * passengers) + 50; // Base fare × passengers + service fee
+    return (calculateBaseFare() * passengers) + 50;
   };
 
   return (
@@ -128,7 +119,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Passenger details */}
           {Array.from({ length: passengers }).map((_, index) => (
             <div key={index} className="space-y-4 border-b pb-4 last:border-b-0">
               <h3 className="font-medium text-railway-700">Passenger {index + 1}</h3>
@@ -181,7 +171,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
             </div>
           ))}
 
-          {/* Contact Information */}
           <div className="space-y-4">
             <h3 className="font-medium text-railway-700">Contact Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -210,7 +199,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
             </div>
           </div>
 
-          {/* Payment Method */}
           <div className="space-y-4">
             <h3 className="font-medium text-railway-700">Payment Method</h3>
             <RadioGroup
@@ -233,7 +221,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
             </RadioGroup>
           </div>
 
-          {/* Fare Summary */}
           <div className="space-y-4 bg-gradient-to-r from-railway-50 to-white p-4 rounded-lg">
             <h3 className="font-medium text-railway-700">Fare Summary</h3>
             <div className="flex justify-between">

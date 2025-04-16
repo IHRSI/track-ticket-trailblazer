@@ -123,6 +123,21 @@ const TrainForm: React.FC<TrainFormProps> = ({ onSubmit, initialData }) => {
       return false;
     }
     
+    // Validate date format and ensure it's not in the past
+    const selectedDate = new Date(trainData.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);  // Set to beginning of today
+    
+    if (isNaN(selectedDate.getTime())) {
+      toast.error("Please select a valid date");
+      return false;
+    }
+    
+    if (selectedDate < today) {
+      toast.error("Travel date cannot be in the past");
+      return false;
+    }
+    
     return true;
   };
 
