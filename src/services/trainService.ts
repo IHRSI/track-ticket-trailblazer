@@ -482,7 +482,7 @@ export const updateTrain = async (trainData: {
       'Sleeper': 0.4
     };
     
-    for (const fare of existingFares) {
+    for (const fare of existingFares || []) {
       const multiplier = fareClasses[fare.class as keyof typeof fareClasses] || 1.0;
       
       const { error: fareUpdateError } = await supabase
