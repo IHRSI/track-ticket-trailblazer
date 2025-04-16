@@ -168,6 +168,7 @@ export const createBooking = async (bookingData: {
         .single();
         
       if (anyFareError) throw anyFareError;
+      if (!anyFare) throw new Error('No fare found for this train');
       fareId = anyFare.fare_id;
     }
     
@@ -323,17 +324,22 @@ export const cancelBooking = async (pnr: string, amount: number): Promise<void> 
 
 // Admin functions
 export const getAdminData = async (): Promise<{ totalRevenue: number }> => {
-  const { data, error } = await supabase
-    .from('admin')
-    .select('total_revenue')
-    .single();
-  
-  if (error) {
-    console.error('Error fetching admin data:', error);
-    return { totalRevenue: 0 }; // Default value if error
+  try {
+    const { data, error } = await supabase
+      .from('admin')
+      .select('total_revenue')
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error fetching admin data:', error);
+      return { totalRevenue: 0 }; // Default value if error
+    }
+    
+    return { totalRevenue: data?.total_revenue || 0 };
+  } catch (error) {
+    console.error('Error in getAdminData:', error);
+    return { totalRevenue: 0 }; // Default value if any error
   }
-  
-  return { totalRevenue: data?.total_revenue || 0 };
 };
 
 // Add a new train (admin only)
