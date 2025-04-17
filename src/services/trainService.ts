@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { TrainData, FareData, mapTrainDataToTrain, Train, BookingData, PaymentData, CancellationData } from '@/types/railBooker';
 import { toast } from 'sonner';
@@ -161,6 +160,18 @@ export const createBooking = async (bookingData: {
     const bookings: string[] = [];
     let firstPnr = '';
     
+    const { data: paymentData, error: paymentError } = await supabase
+      .from('payment')
+      .insert({
+        amount: bookingData.totalAmount,
+        payment_method: bookingData.paymentMethod,
+        status: 'Successful'  // Set to successful immediately
+      })
+      .select('payment_id, pnr')
+      .single();
+    
+    if (paymentError) throw paymentError;
+    
     for (let i = 0; i < passengerIds.length; i++) {
       const seatNo = `${bookingData.fareClass[0]}${Math.floor(Math.random() * 90) + 10}`;
       
@@ -173,7 +184,7 @@ export const createBooking = async (bookingData: {
           class: bookingData.fareClass,
           seat_no: seatNo,
           booking_status: 'Confirmed',
-          payment_status: 'Successful' // Set payment status to successful immediately
+          payment_status: 'Successful' // Set payment status to Successful
         })
         .select('pnr')
         .single();
@@ -181,22 +192,18 @@ export const createBooking = async (bookingData: {
       if (bookingError) throw bookingError;
       
       bookings.push(bookingResult.pnr);
-      if (i === 0) firstPnr = bookingResult.pnr;
+      if (i === 0) {
+        firstPnr = bookingResult.pnr;
+        
+        const { error: pnrUpdateError } = await supabase
+          .from('payment')
+          .update({ pnr: firstPnr })
+          .eq('payment_id', paymentData.payment_id);
+        
+        if (pnrUpdateError) throw pnrUpdateError;
+      }
     }
     
-    // Create payment record - This will trigger the update_revenue_on_payment function
-    const { error: paymentError } = await supabase
-      .from('payment')
-      .insert({
-        pnr: firstPnr,
-        amount: bookingData.totalAmount,
-        payment_method: bookingData.paymentMethod,
-        status: 'Successful'  // Set to successful immediately to trigger revenue update
-      });
-    
-    if (paymentError) throw paymentError;
-    
-    // Explicitly call the decrement RPC function to reduce available seats
     const { data: updatedSeats, error: seatUpdateError } = await supabase.rpc('decrement', {
       row_id: bookingData.trainId,
       value: bookingData.passengerData.length
@@ -281,7 +288,6 @@ export const cancelBooking = async (pnr: string, amount: number): Promise<void> 
       
       if (cancellationError) throw cancellationError;
       
-      // Explicitly call the increment RPC function to add back the seat
       const { data: updatedSeats, error: seatUpdateError } = await supabase.rpc('increment', {
         row_id: bookingData.train_id,
         value: 1

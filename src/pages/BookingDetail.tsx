@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getTrain } from '@/services/trainService';
@@ -10,17 +10,51 @@ import { ArrowLeft, Clock, Calendar, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Train } from '@/types/railBooker';
+import { supabase } from '@/integrations/supabase/client';
 
 const BookingDetail = () => {
   const { trainId } = useParams();
   const [searchParams] = useSearchParams();
   const passengers = parseInt(searchParams.get('passengers') || '1');
+  const [currentTrain, setCurrentTrain] = useState<Train | null>(null);
 
-  const { data: train, isLoading, error } = useQuery({
+  const { data: train, isLoading, error, refetch } = useQuery({
     queryKey: ['train', trainId],
     queryFn: () => getTrain(trainId as string),
     enabled: !!trainId,
   });
+
+  useEffect(() => {
+    if (train) {
+      setCurrentTrain(train);
+    }
+  }, [train]);
+
+  // Subscribe to real-time updates for train availability
+  useEffect(() => {
+    if (!trainId) return;
+    
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'train',
+          filter: `train_id=eq.${trainId}`
+        },
+        (payload) => {
+          console.log('Train data changed:', payload);
+          refetch();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [trainId, refetch]);
 
   // Format time to ensure it's in HH:MM format
   const formatTime = (time: string) => {
@@ -49,7 +83,7 @@ const BookingDetail = () => {
     );
   }
 
-  if (error || !train) {
+  if (error || !currentTrain) {
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-50 to-white">
         <Navbar />
@@ -80,15 +114,15 @@ const BookingDetail = () => {
         </div>
         
         <div className="bg-white rounded-lg shadow-md p-6 mb-8 border-t-4 border-t-railway-600">
-          <h1 className="text-2xl font-bold mb-4 text-railway-800">{train.name}</h1>
+          <h1 className="text-2xl font-bold mb-4 text-railway-800">{currentTrain.name}</h1>
           <div className="flex flex-col md:flex-row md:justify-between gap-4 border-b pb-4 mb-4">
             <div>
               <p className="text-sm text-gray-500">Train Number</p>
-              <p className="font-medium">{train.number}</p>
+              <p className="font-medium">{currentTrain.number}</p>
             </div>
             <div className="flex items-center">
               <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-              <span>{train.date}</span>
+              <span>{currentTrain.date}</span>
             </div>
             <div className="flex items-center">
               <Users className="h-4 w-4 mr-2 text-gray-400" />
@@ -100,8 +134,8 @@ const BookingDetail = () => {
             <div className="space-y-1 mb-4 md:mb-0">
               <div className="flex items-center">
                 <div>
-                  <p className="text-2xl font-bold">{formatTime(train.departureTime)}</p>
-                  <p className="text-gray-500">{train.origin}</p>
+                  <p className="text-2xl font-bold">{formatTime(currentTrain.departureTime)}</p>
+                  <p className="text-gray-500">{currentTrain.origin}</p>
                 </div>
                 <div className="mx-4 text-gray-400 flex items-center">
                   <div className="w-2 h-2 rounded-full bg-gray-400"></div>
@@ -111,21 +145,22 @@ const BookingDetail = () => {
                   <div className="w-2 h-2 rounded-full bg-gray-400"></div>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{formatTime(train.arrivalTime)}</p>
-                  <p className="text-gray-500">{train.destination}</p>
+                  <p className="text-2xl font-bold">{formatTime(currentTrain.arrivalTime)}</p>
+                  <p className="text-gray-500">{currentTrain.destination}</p>
                 </div>
               </div>
-              <p className="text-sm text-gray-500">{train.duration || "Unknown"} journey</p>
+              <p className="text-sm text-gray-500">{currentTrain.duration || "Unknown"} journey</p>
             </div>
             
             <div className="bg-gradient-to-r from-railway-50 to-white p-3 rounded-md">
               <p className="text-sm text-gray-500">Price per person</p>
-              <p className="text-2xl font-bold text-railway-700">₹{train.price}</p>
+              <p className="text-2xl font-bold text-railway-700">₹{currentTrain.price}</p>
+              <p className="text-sm text-gray-600 mt-1">Available seats: {currentTrain.availableSeats}</p>
             </div>
           </div>
         </div>
         
-        <BookingForm train={train} passengers={passengers} />
+        <BookingForm train={currentTrain} passengers={passengers} />
       </main>
       
       <Footer />

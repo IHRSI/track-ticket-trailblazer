@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -100,7 +99,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
       console.log("Booking successful with PNR:", pnr);
       toast.success("Train successfully booked! Your tickets have been reserved.");
       
-      // Short delay before navigation to allow user to see the success message
       setTimeout(() => {
         navigate('/bookings');
       }, 1500);
