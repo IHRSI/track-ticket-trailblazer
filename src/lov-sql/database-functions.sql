@@ -105,3 +105,24 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Create the trigger for update_revenue_on_payment function
+DROP TRIGGER IF EXISTS payment_revenue_trigger ON payment;
+CREATE TRIGGER payment_revenue_trigger
+AFTER INSERT OR UPDATE OF status ON payment
+FOR EACH ROW
+EXECUTE FUNCTION update_revenue_on_payment();
+
+-- Create the trigger for update_revenue_on_refund function
+DROP TRIGGER IF EXISTS refund_revenue_trigger ON cancellation;
+CREATE TRIGGER refund_revenue_trigger
+AFTER INSERT OR UPDATE OF status ON cancellation
+FOR EACH ROW
+EXECUTE FUNCTION update_revenue_on_refund();
+
+-- Create the trigger for update_train_seats function
+DROP TRIGGER IF EXISTS booking_seats_trigger ON booking;
+CREATE TRIGGER booking_seats_trigger
+AFTER INSERT OR UPDATE OF booking_status ON booking
+FOR EACH ROW
+EXECUTE FUNCTION update_train_seats();

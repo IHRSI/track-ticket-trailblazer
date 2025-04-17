@@ -24,7 +24,7 @@ export const queryLogEvents = {
 };
 
 // Define the custom type for the supabase client to include both RPC functions
-type CustomSupabaseClient = ReturnType<typeof createClient<Database>> & {
+export type CustomSupabaseClient = ReturnType<typeof createClient<Database>> & {
   rpc(
     fn: "increment" | "decrement",
     params: { row_id: string; value: number }

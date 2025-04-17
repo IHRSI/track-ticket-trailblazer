@@ -18,3 +18,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE admin;
 -- Enable realtime for the cancellation table
 ALTER TABLE cancellation REPLICA IDENTITY FULL;
 ALTER PUBLICATION supabase_realtime ADD TABLE cancellation;
+
+-- Enable realtime for the fare table
+ALTER TABLE fare REPLICA IDENTITY FULL;
+ALTER PUBLICATION supabase_realtime ADD TABLE fare;

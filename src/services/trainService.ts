@@ -172,7 +172,8 @@ export const createBooking = async (bookingData: {
           fare_id: fareId,
           class: bookingData.fareClass,
           seat_no: seatNo,
-          booking_status: 'Confirmed'
+          booking_status: 'Confirmed',
+          payment_status: 'Successful' // Set payment status to successful immediately
         })
         .select('pnr')
         .single();

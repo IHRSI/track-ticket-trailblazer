@@ -71,8 +71,8 @@ const AdminDashboard = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'admin' },
-        () => {
-          console.log('Admin data changed, refreshing...');
+        (payload) => {
+          console.log('Admin data changed, refreshing...', payload);
           queryClient.invalidateQueries({ queryKey: ['adminData'] });
         }
       )
@@ -83,8 +83,8 @@ const AdminDashboard = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'train' },
-        () => {
-          console.log('Train data changed, refreshing...');
+        (payload) => {
+          console.log('Train data changed, refreshing...', payload);
           queryClient.invalidateQueries({ queryKey: ['trains'] });
         }
       )
@@ -95,8 +95,8 @@ const AdminDashboard = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'booking' },
-        () => {
-          console.log('Booking data changed, refreshing...');
+        (payload) => {
+          console.log('Booking data changed, refreshing...', payload);
           queryClient.invalidateQueries({ queryKey: ['bookings'] });
         }
       )
@@ -107,8 +107,21 @@ const AdminDashboard = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'payment' },
-        () => {
-          console.log('Payment data changed, refreshing admin data...');
+        (payload) => {
+          console.log('Payment data changed, refreshing admin data...', payload);
+          queryClient.invalidateQueries({ queryKey: ['adminData'] });
+        }
+      )
+      .subscribe();
+      
+    const cancellationChannel = supabase
+      .channel('cancellation-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cancellation' },
+        (payload) => {
+          console.log('Cancellation data changed, refreshing...', payload);
+          queryClient.invalidateQueries({ queryKey: ['cancellations'] });
           queryClient.invalidateQueries({ queryKey: ['adminData'] });
         }
       )
@@ -116,7 +129,9 @@ const AdminDashboard = () => {
     
     const refreshInterval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['adminData'] });
-    }, 60000);
+      queryClient.invalidateQueries({ queryKey: ['trains'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    }, 30000);
     
     return () => {
       clearInterval(refreshInterval);
@@ -124,6 +139,7 @@ const AdminDashboard = () => {
       supabase.removeChannel(trainChannel);
       supabase.removeChannel(bookingChannel);
       supabase.removeChannel(paymentChannel);
+      supabase.removeChannel(cancellationChannel);
     };
   }, [queryClient]);
   
