@@ -165,7 +165,8 @@ export const createBooking = async (bookingData: {
       .insert({
         amount: bookingData.totalAmount,
         payment_method: bookingData.paymentMethod,
-        status: 'Successful'  // Set to successful immediately
+        status: 'Successful',  // Set to successful immediately
+        pnr: 'TEMP' // Temporary PNR, will be updated later
       })
       .select('payment_id, pnr')
       .single();
