@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { TrainData, FareData, mapTrainDataToTrain, Train, BookingData, PaymentData, CancellationData } from '@/types/railBooker';
 import { toast } from 'sonner';
@@ -182,25 +183,31 @@ export const createBooking = async (bookingData: {
       if (i === 0) firstPnr = bookingResult.pnr;
     }
     
+    // Create payment record - This will trigger the update_revenue_on_payment function
     const { error: paymentError } = await supabase
       .from('payment')
       .insert({
         pnr: firstPnr,
         amount: bookingData.totalAmount,
         payment_method: bookingData.paymentMethod,
-        status: 'Successful'
+        status: 'Successful'  // Set to successful immediately to trigger revenue update
       });
     
     if (paymentError) throw paymentError;
     
-    const { error: seatUpdateError } = await supabase.rpc('decrement', {
+    // Explicitly call the decrement RPC function to reduce available seats
+    const { data: updatedSeats, error: seatUpdateError } = await supabase.rpc('decrement', {
       row_id: bookingData.trainId,
       value: bookingData.passengerData.length
     });
     
     if (seatUpdateError) {
-      console.error('Warning: Seat decrement function error:', seatUpdateError);
+      console.error('Error decreasing seats:', seatUpdateError);
+      throw new Error('Failed to update seat availability');
     }
+    
+    console.log('Updated seats:', updatedSeats);
+    toast.success(`Successfully booked ${bookingData.passengerData.length} seats. Available seats: ${updatedSeats}`);
     
     return firstPnr;
   } catch (error: any) {
@@ -268,21 +275,24 @@ export const cancelBooking = async (pnr: string, amount: number): Promise<void> 
         .insert({
           pnr,
           refund_amount: refundAmount,
-          status: 'Processed'
+          status: 'Processed'  // Set to processed immediately to trigger revenue update
         });
       
       if (cancellationError) throw cancellationError;
       
-      const { error: seatUpdateError } = await supabase.rpc('increment', {
+      // Explicitly call the increment RPC function to add back the seat
+      const { data: updatedSeats, error: seatUpdateError } = await supabase.rpc('increment', {
         row_id: bookingData.train_id,
         value: 1
       });
       
       if (seatUpdateError) {
-        console.error('Warning: Seat increment function error:', seatUpdateError);
+        console.error('Error increasing seats:', seatUpdateError);
+        throw new Error('Failed to update seat availability');
       }
       
-      toast.success('Booking cancelled successfully. Refund of ₹' + refundAmount.toFixed(2) + ' will be processed.');
+      console.log('Updated seats after cancellation:', updatedSeats);
+      toast.success(`Booking cancelled successfully. Refund of ₹${refundAmount.toFixed(2)} will be processed. Available seats: ${updatedSeats}`);
     } else {
       toast.info('This booking has already been cancelled.');
     }

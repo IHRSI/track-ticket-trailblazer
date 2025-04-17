@@ -35,6 +35,7 @@ import {
   CreditCard, 
   DollarSign 
 } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -65,12 +66,66 @@ const AdminDashboard = () => {
   useEffect(() => {
     handleRefreshData();
     
+    const adminChannel = supabase
+      .channel('admin-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'admin' },
+        () => {
+          console.log('Admin data changed, refreshing...');
+          queryClient.invalidateQueries({ queryKey: ['adminData'] });
+        }
+      )
+      .subscribe();
+      
+    const trainChannel = supabase
+      .channel('train-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'train' },
+        () => {
+          console.log('Train data changed, refreshing...');
+          queryClient.invalidateQueries({ queryKey: ['trains'] });
+        }
+      )
+      .subscribe();
+      
+    const bookingChannel = supabase
+      .channel('booking-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'booking' },
+        () => {
+          console.log('Booking data changed, refreshing...');
+          queryClient.invalidateQueries({ queryKey: ['bookings'] });
+        }
+      )
+      .subscribe();
+      
+    const paymentChannel = supabase
+      .channel('payment-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payment' },
+        () => {
+          console.log('Payment data changed, refreshing admin data...');
+          queryClient.invalidateQueries({ queryKey: ['adminData'] });
+        }
+      )
+      .subscribe();
+    
     const refreshInterval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['adminData'] });
     }, 60000);
     
-    return () => clearInterval(refreshInterval);
-  }, []);
+    return () => {
+      clearInterval(refreshInterval);
+      supabase.removeChannel(adminChannel);
+      supabase.removeChannel(trainChannel);
+      supabase.removeChannel(bookingChannel);
+      supabase.removeChannel(paymentChannel);
+    };
+  }, [queryClient]);
   
   const handleTrainAdded = () => {
     queryClient.invalidateQueries({ queryKey: ['trains'] });

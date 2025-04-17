@@ -75,6 +75,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
     }
     
     setIsLoading(true);
+    toast.info("Processing your booking...");
     
     try {
       const formattedPassengers = passengerDetails.map(p => ({
@@ -94,8 +95,13 @@ const BookingForm: React.FC<BookingFormProps> = ({ train, passengers }) => {
         totalAmount: calculateTotalAmount()
       });
       
+      console.log("Booking successful with PNR:", pnr);
       toast.success("Train successfully booked! Your tickets have been reserved.");
-      navigate('/bookings');
+      
+      // Short delay before navigation to allow user to see the success message
+      setTimeout(() => {
+        navigate('/bookings');
+      }, 1500);
     } catch (error: any) {
       console.error("Booking error:", error);
       toast.error(`There was an error processing your booking: ${error.message || 'Please try again.'}`);
