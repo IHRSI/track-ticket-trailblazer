@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import TrainForm from '@/components/admin/TrainForm';
+import SqlQueryLogger from '@/components/admin/SqlQueryLogger';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -645,6 +646,8 @@ const AdminDashboard = () => {
             )}
           </TabsContent>
         </Tabs>
+        
+        <SqlQueryLogger />
       </main>
       
       <Footer />

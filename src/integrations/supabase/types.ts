@@ -273,12 +273,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_total_revenue: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       decrement: {
         Args: { row_id: string; value: number }
         Returns: number
       }
+      get_seat_availability: {
+        Args: { train_no: string }
+        Returns: number
+      }
       increment: {
         Args: { row_id: string; value: number }
+        Returns: number
+      }
+      passengers_by_train: {
+        Args: { train_no: string }
+        Returns: {
+          name: string
+          contact: string
+        }[]
+      }
+      total_revenue: {
+        Args: Record<PropertyKey, never>
         Returns: number
       }
     }
