@@ -92,8 +92,8 @@ supabase.from = function(table: string) {
 
 // Also wrap RPC functions to log them
 const originalRpc = supabase.rpc.bind(supabase);
-supabase.rpc = function<T = any>(fn: any, params?: any) {
-  const rpcResult = originalRpc<T>(fn, params);
+supabase.rpc = function(fn: any, params?: any) {
+  const rpcResult = originalRpc(fn, params);
   queryLogEvents.emitQuery({
     sql: `CALL ${fn}(${params ? JSON.stringify(params) : ''})`,
     operation: 'RPC',
